@@ -7,8 +7,8 @@ $ProjectFile = Join-Path $PSScriptRoot "ReminderApp.csproj"
 
 Write-Host "Compiling ReminderApp as a Single File Executable (Release, win-x64)..." -ForegroundColor Cyan
 
-# Build and publish as a self-contained, single-file executable with size optimizations
-dotnet publish $ProjectFile -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishTrimmed=true /p:EnableCompressionInSingleFile=true
+# Build and publish as a self-contained, single-file executable with compression
+dotnet publish $ProjectFile -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`nBuild completed successfully!" -ForegroundColor Green
