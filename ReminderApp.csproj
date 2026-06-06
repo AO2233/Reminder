@@ -6,12 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationIcon>icon\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
-    <EmbeddedResource Include="rest.ico" />
+    <EmbeddedResource Include="icon\rest.ico" />
+    <EmbeddedResource Include="icon\app.ico" />
+    <EmbeddedResource Include="icon\over.ico" />
   </ItemGroup>
 
 </Project>

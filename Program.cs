@@ -13,8 +13,10 @@ namespace ReminderApp
         static int WorkMinutes = 45;
         static int RestMinutes = 15;
         static int OvertimeMinutes = 10;
+        static string ToastMode = "reminder"; // short, long, reminder
         
         static bool _isResting = false;
+        static bool _isOvertime = false;
         static bool _isPaused = false;
         static DateTime _phaseEndTime;
         static TimeSpan _remainingTime;
@@ -25,6 +27,7 @@ namespace ReminderApp
         
         static Icon _workIcon;
         static Icon _restIcon;
+        static Icon _overIcon;
 
         static readonly object _stateLock = new object();
 
@@ -44,14 +47,29 @@ namespace ReminderApp
             _trayMenu.Items.Add("-");
             _trayMenu.Items.Add("Exit", null, OnExitClicked);
 
-            _workIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             try
             {
-                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("ReminderApp.rest.ico");
+                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("ReminderApp.icon.app.ico");
+                if (stream != null) _workIcon = new Icon(stream);
+                else _workIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch { _workIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
+
+            try
+            {
+                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("ReminderApp.icon.rest.ico");
                 if (stream != null) _restIcon = new Icon(stream);
                 else _restIcon = _workIcon;
             }
             catch { _restIcon = _workIcon; }
+
+            try
+            {
+                using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("ReminderApp.icon.over.ico");
+                if (stream != null) _overIcon = new Icon(stream);
+                else _overIcon = _workIcon;
+            }
+            catch { _overIcon = _workIcon; }
 
             _trayIcon = new NotifyIcon()
             {
@@ -166,7 +184,11 @@ namespace ReminderApp
                         {
                             var key = parts[0].Trim().ToLower();
                             var val = parts[1].Trim();
-                            if (int.TryParse(val, out int mins))
+                            if (key == "toastmode")
+                            {
+                                ToastMode = val.ToLower();
+                            }
+                            else if (int.TryParse(val, out int mins))
                             {
                                 if (key == "work") WorkMinutes = mins;
                                 else if (key == "rest") RestMinutes = mins;
@@ -177,7 +199,7 @@ namespace ReminderApp
                 }
                 else
                 {
-                    File.WriteAllText(configPath, $"work={WorkMinutes}\nrest={RestMinutes}\novertime={OvertimeMinutes}");
+                    File.WriteAllText(configPath, $"work={WorkMinutes}\nrest={RestMinutes}\novertime={OvertimeMinutes}\ntoastmode={ToastMode}");
                 }
             }
             catch { }
@@ -186,6 +208,7 @@ namespace ReminderApp
         static void StartWorkPhase()
         {
             _isResting = false;
+            _isOvertime = false;
             ClearToasts();
             SetTimer(WorkMinutes);
         }
@@ -193,6 +216,7 @@ namespace ReminderApp
         static void StartRestPhase()
         {
             _isResting = true;
+            _isOvertime = false;
             ClearToasts();
             SetTimer(RestMinutes);
         }
@@ -200,6 +224,7 @@ namespace ReminderApp
         static void StartOvertimePhase()
         {
             _isResting = false;
+            _isOvertime = true;
             SetTimer(OvertimeMinutes);
         }
 
@@ -213,7 +238,7 @@ namespace ReminderApp
         {
             if (_trayIcon == null) return;
             
-            string phaseName = _isResting ? "Rest" : "Work";
+            string phaseName = _isResting ? "Rest" : (_isOvertime ? "Overtime" : "Work");
             string status = _isPaused ? "[Paused] " : "";
             
             TimeSpan t = _isPaused ? _remainingTime : (_phaseEndTime - DateTime.Now);
@@ -224,15 +249,23 @@ namespace ReminderApp
             string text = $"{status}{phaseName} - {timeStr}";
             if (text.Length > 63) text = text.Substring(0, 63);
             _trayIcon.Text = text;
-            _trayIcon.Icon = _isResting ? _restIcon : _workIcon;
+            _trayIcon.Icon = _isResting ? _restIcon : (_isOvertime ? _overIcon : _workIcon);
         }
 
         static void ShowRestReminder()
         {
-            new ToastContentBuilder()
+            var builder = new ToastContentBuilder()
                 .AddText("Time to Rest!")
-                .AddText($"Take a {RestMinutes} min break.")
-                .AddButton(new ToastButton()
+                .AddText($"Take a {RestMinutes} min break.");
+
+            if (ToastMode == "reminder")
+                builder.SetToastScenario(ToastScenario.Reminder);
+            else if (ToastMode == "long")
+                builder.SetToastDuration(ToastDuration.Long);
+            else
+                builder.SetToastDuration(ToastDuration.Short);
+
+            builder.AddButton(new ToastButton()
                     .SetContent("Rest")
                     .AddArgument("action", "rest")
                     .SetBackgroundActivation())
